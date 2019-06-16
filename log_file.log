@@ -1,0 +1,5 @@
+2019-06-16 11:16:27.683530 | hello | FASTTEXT(0.8)
+2019-06-16 11:16:44.604834 | what is income tax | FASTTEXT(0.8)
+2019-06-16 11:16:53.856859 | how to fill income tax | FASTTEXT(0.8)
+2019-06-16 11:17:15.270274 | what is form 80c | FASTTEXT(0.8)
+2019-06-16 11:39:50.028556 | hello | TF-IDF(0.6)
