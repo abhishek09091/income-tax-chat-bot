@@ -26,13 +26,12 @@ from logging.handlers import RotatingFileHandler
 
 from memory_profiler import profile
 from cProfile import Profile
-prof = Profile()
 
 
 logger = logging.getLogger('log_file.log')
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler('log_file.log', maxBytes=10000, backupCount=5)
-logger.addHandler(handler)    
+logger.addHandler(handler)
 
 
 
@@ -55,7 +54,6 @@ feedback_file_object = open("feedback_file.txt", "a+")
 train_sentence_vector = 1
 tf_idf = 1
 model = 1
-
 
 @profile
 @app.before_first_request
@@ -161,16 +159,10 @@ def query_response():
         query_tf_idf = tf_idf.transform([query])
         cosine_similarities = cosine_similarity(query_tf_idf, faq_tf_idf).flatten()
         related_docs_indices = cosine_similarities.argsort()[::-1][:2]
-
-        un_norm_ans = "Sorry I am unable to answer that. Can you rephrase the question again."
-
         if cosine_similarities[related_docs_indices[0]] < 0.6:
-            query_ans, _id, confidence_score = un_norm_ans, -1, round(cosine_similarities[related_docs_indices[0]], 2)
+            query_ans, _id, confidence_score = "Sorry I am unable to answer that. Can you rephrase the question.", -1, round(cosine_similarities[related_docs_indices[0]], 2)
         else:
-            query_ans, _id, confidence_score = answer_list[related_docs_indices[0]], \
-                                               original_id[related_docs_indices[0]], \
-                                               round(cosine_similarities[related_docs_indices[0]], 2)
-
+            query_ans, _id, confidence_score = answer_list[related_docs_indices[0]], original_id[related_docs_indices[0]], round(cosine_similarities[related_docs_indices[0]], 2)
         return jsonify({'query_ans': query_ans, 'id': _id, 'confidence_score':confidence_score})
     else:
         return jsonify({"Call": "GET not allowed.."})
@@ -184,22 +176,17 @@ def query_response():
 #     if request.method == 'POST':
 #         query = request.form['query']
 #         query = query.lower()
-#         logger.warning(str(datetime.now()) + " | " + query + " | " + "FASTTEXT(0.6)")
+#         logger.warning(str(datetime.now()) + " | " + query + " | " + "FASTTEXT(0.8)")
 #         query_vec = get_sentence_vector(query)
 #         query_vec = np.asarray(query_vec)
-#
+
 #         similarity_score = np.matmul(train_sentence_vector, query_vec)
 #         similarity_score_index = np.argsort(similarity_score)[::-1][:2]
-#
-#         un_norm_ans = "Sorry I am unable to answer that. Can you rephrase the question again."
-#
+
 #         if similarity_score[similarity_score_index[0]] < 0.6:
-#             query_ans, _id, confidence_score = un_norm_ans, -1, round(similarity_score[similarity_score_index[0]], 2)
+#             query_ans, _id, confidence_score = "Sorry I am unable to answer that. Can you rephrase the question again.", -1, round(similarity_score[similarity_score_index[0]], 2)
 #         else:
-#             query_ans, _id, confidence_score = answer_list[similarity_score_index[0]], \
-#                                                original_id[similarity_score_index[0]], \
-#                                                round(similarity_score[similarity_score_index[0]], 2)
-#
+#             query_ans, _id, confidence_score = answer_list[similarity_score_index[0]], original_id[similarity_score_index[0]], round(similarity_score[similarity_score_index[0]], 2)
 #         return jsonify({'status':200, 'query_ans': query_ans, 'id': _id, 'confidence_score': confidence_score})
 #     else:
 #         return jsonify({"Call": "GET not allowed.."})

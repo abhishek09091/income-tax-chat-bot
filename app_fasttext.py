@@ -25,14 +25,12 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 from memory_profiler import profile
-from cProfile import Profile
-prof = Profile()
 
 
 logger = logging.getLogger('log_file.log')
 logger.setLevel(logging.DEBUG)
 handler = RotatingFileHandler('log_file.log', maxBytes=10000, backupCount=5)
-logger.addHandler(handler)    
+logger.addHandler(handler)
 
 
 
@@ -66,21 +64,22 @@ def loader():
     faq_data = pd.read_csv("dataset/master_faq.csv")
     print("Training faq data : ", faq_data.shape, faq_data.columns)
 
+    question_list = faq_data['Question'].tolist()
     answer_list = faq_data['Answer'].tolist()
     original_id = faq_data['Original_id'].tolist()
 
     tf_idf = TfidfVectorizer()
     faq_tf_idf = tf_idf.fit_transform(faq_data['Question'].values.astype('str'))
 
-    # model = FastText.load('./model/fasttext.model')
-    # print("Fastetext Model loaded successfully...")
+    model = FastText.load('./model/fasttext.model')
+    print("Fastetext Model loaded successfully...")
 
-    # train_sentence_vector = []
-    # for sentence in tqdm(question_list):
-    #     train_sentence_vector.append(get_sentence_vector(str(sentence)))
+    train_sentence_vector = []
+    for sentence in tqdm(question_list):
+        train_sentence_vector.append(get_sentence_vector(str(sentence)))
 
-    # train_sentence_vector = np.array([np.array(xi) for xi in train_sentence_vector])
-    # print("Final train vector shape : ", train_sentence_vector.shape)
+    train_sentence_vector = np.array([np.array(xi) for xi in train_sentence_vector])
+    print("Final train vector shape : ", train_sentence_vector.shape)
 
     for i in range(faq_data.shape[0]):
         ques = str(faq_data['Question'][i])
@@ -147,62 +146,52 @@ def get_sentence_vector(sentence):
     return sent_vec / np.sqrt(sent_vec.dot(sent_vec))
 
 
-@app.route('/send_query_response', methods=['POST'])
-def query_response():
-    """
-    Query response using TF-IDF score
-    """
-    if request.method == 'POST':
-        query = request.form['query']
-        query = query.lower()
-        logger.warning(str(datetime.now()) + " | " + query + " | " + "TF-IDF(0.6)")
-        query = leveinstein_on_query(query)
-        print(query)
-        query_tf_idf = tf_idf.transform([query])
-        cosine_similarities = cosine_similarity(query_tf_idf, faq_tf_idf).flatten()
-        related_docs_indices = cosine_similarities.argsort()[::-1][:2]
-
-        un_norm_ans = "Sorry I am unable to answer that. Can you rephrase the question again."
-
-        if cosine_similarities[related_docs_indices[0]] < 0.6:
-            query_ans, _id, confidence_score = un_norm_ans, -1, round(cosine_similarities[related_docs_indices[0]], 2)
-        else:
-            query_ans, _id, confidence_score = answer_list[related_docs_indices[0]], \
-                                               original_id[related_docs_indices[0]], \
-                                               round(cosine_similarities[related_docs_indices[0]], 2)
-
-        return jsonify({'query_ans': query_ans, 'id': _id, 'confidence_score':confidence_score})
-    else:
-        return jsonify({"Call": "GET not allowed.."})
-
-
 # @app.route('/send_query_response', methods=['POST'])
 # def query_response():
 #     """
-#     Query response using Cosine similarity using word embeddings
+#     Query response using TF-IDF score
 #     """
 #     if request.method == 'POST':
 #         query = request.form['query']
 #         query = query.lower()
-#         logger.warning(str(datetime.now()) + " | " + query + " | " + "FASTTEXT(0.6)")
-#         query_vec = get_sentence_vector(query)
-#         query_vec = np.asarray(query_vec)
-#
-#         similarity_score = np.matmul(train_sentence_vector, query_vec)
-#         similarity_score_index = np.argsort(similarity_score)[::-1][:2]
-#
-#         un_norm_ans = "Sorry I am unable to answer that. Can you rephrase the question again."
-#
-#         if similarity_score[similarity_score_index[0]] < 0.6:
-#             query_ans, _id, confidence_score = un_norm_ans, -1, round(similarity_score[similarity_score_index[0]], 2)
+#         logger.warning(str(datetime.now()) + " | " + query + " | " + "TF-IDF(0.6)")
+#         query = leveinstein_on_query(query)
+#         print(query)
+#         query_tf_idf = tf_idf.transform([query])
+#         cosine_similarities = cosine_similarity(query_tf_idf, faq_tf_idf).flatten()
+#         related_docs_indices = cosine_similarities.argsort()[::-1][:2]
+#         if cosine_similarities[related_docs_indices[0]] < 0.6:
+#             query_ans, _id, confidence_score = "Sorry I am unable to answer that. Can you rephrase the question.", -1, round(cosine_similarities[related_docs_indices[0]], 2)
 #         else:
-#             query_ans, _id, confidence_score = answer_list[similarity_score_index[0]], \
-#                                                original_id[similarity_score_index[0]], \
-#                                                round(similarity_score[similarity_score_index[0]], 2)
-#
-#         return jsonify({'status':200, 'query_ans': query_ans, 'id': _id, 'confidence_score': confidence_score})
+#             query_ans, _id, confidence_score = answer_list[related_docs_indices[0]], original_id[related_docs_indices[0]], round(cosine_similarities[related_docs_indices[0]], 2)
+#         return jsonify({'query_ans': query_ans, 'id': _id, 'confidence_score':confidence_score})
 #     else:
 #         return jsonify({"Call": "GET not allowed.."})
+
+
+@app.route('/send_query_response', methods=['POST'])
+def query_response():
+    """
+    Query response using Cosine similarity using word embeddings
+    """
+    if request.method == 'POST':
+        query = request.form['query']
+        query = query.lower()
+        logger.warning(str(datetime.now()) + " | " + query + " | " + "FASTTEXT(0.8)")
+        query_vec = get_sentence_vector(query)
+        query_vec = np.asarray(query_vec)
+
+        similarity_score = np.matmul(train_sentence_vector, query_vec)
+        similarity_score_index = np.argsort(similarity_score)[::-1][:2]
+
+        if similarity_score[similarity_score_index[0]] < 0.6:
+            query_ans, _id, confidence_score = "Sorry I am unable to answer that. Can you rephrase the question again.", -1, round(similarity_score[similarity_score_index[0]], 2)
+        else:
+            query_ans, _id, confidence_score = answer_list[similarity_score_index[0]], original_id[similarity_score_index[0]], round(similarity_score[similarity_score_index[0]], 2)
+            # print(({'status':200, 'query_ans': query_ans, 'id': _id, 'confidence_score': confidence_score}))
+        return jsonify({'status':200, 'query_ans': query_ans, 'id': _id, 'confidence_score': confidence_score})
+    else:
+        return jsonify({"Call": "GET not allowed.."})
 
 
 @app.route('/get_query_feedback', methods=['POST'])
@@ -218,6 +207,7 @@ def query_feedback():
         feedback_string = str(feedback) + "|" + str(answer) + "|" + str(query) + "\n"
         feedback_file_object.write(feedback_string)
         return jsonify({'stat': 200, 'error': 'No Error', 'call': 'Thanks for sharing the feedback.'})
+
 
 
 @app.route('/test', methods=['POST'])
